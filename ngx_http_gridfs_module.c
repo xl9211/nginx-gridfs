@@ -787,7 +787,7 @@ static ngx_int_t ngx_http_gridfs_handler(ngx_http_request_t* request) {
             value[add_len] = '\0';
         }
     }
-    ngx_log_error(NGX_LOG_INFO, request->connection->log, 0, "ml_url = [%s]", value);
+    ngx_log_error(NGX_LOG_ERR, request->connection->log, 0, "ml_url = [%s]", value);
     // ------------------------------------ xulin add end --------------------------------------
 
 
