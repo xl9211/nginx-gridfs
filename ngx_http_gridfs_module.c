@@ -672,6 +672,12 @@ static ngx_int_t ngx_http_gridfs_handler(ngx_http_request_t* request) {
     ngx_chain_t out;
     ngx_str_t location_name;
     ngx_str_t full_uri;
+    // --------------- xulin add start -------------------
+    char* ml_args;
+    char* arg;
+    unsigned int add_arg;
+    unsigned int add_len; 
+    // --------------- xulin add end -------------------
     char* value;
     ngx_http_mongo_connection_t *mongo_conn;
     gridfs gfs;
@@ -729,14 +735,61 @@ static ngx_int_t ngx_http_gridfs_handler(ngx_http_request_t* request) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    value = (char*)malloc(sizeof(char) * (full_uri.len - location_name.len + 1));
+    value = (char*)malloc(sizeof(char) * (full_uri.len - location_name.len + 1 + request->args.len + 1));
     if (value == NULL) {
         ngx_log_error(NGX_LOG_ERR, request->connection->log, 0,
                       "Failed to allocate memory for value buffer.");
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
     memcpy(value, full_uri.data + location_name.len, full_uri.len - location_name.len);
-    value[full_uri.len - location_name.len] = '\0';
+    
+    // ------------------------------------ xulin add start --------------------------------------
+    if (request->args.len > 0)
+    {  
+        ml_args = (char*)malloc(sizeof(char) * (request->args.len + 1));
+        memcpy(ml_args, request->args.data, request->args.len);
+        ml_args[request->args.len] = '\0';
+        
+        add_len = full_uri.len - location_name.len;
+        memcpy(value + add_len, "?", 1);
+        add_len += 1;
+        arg = strtok(ml_args, "&");
+        while (arg != NULL)
+        {
+            add_arg = 1;
+            if (strstr(arg, "xc_md5") != NULL)
+            {
+                 add_arg = 0;
+            }
+            else if (strstr(arg, "_xingcloud_t") != NULL)
+            {     
+                 add_arg = 0;
+            }        
+            
+            if (add_arg == 1)
+            {
+                 memcpy(value + add_len, arg, strlen(arg));
+                 add_len += strlen(arg);
+                 memcpy(value + add_len, "&", 1);
+                 add_len += 1;
+            }
+            
+            arg = strtok(NULL, "&");
+        }
+        
+        free(ml_args);
+        if (value[add_len - 1] == '?' || value[add_len - 1] == '&')
+        {
+            value[add_len - 1] = '\0';
+        }
+        else
+        {
+            value[add_len] = '\0';
+        }
+    }
+    ngx_log_error(NGX_LOG_INFO, request->connection->log, 0, "ml_url = [%s]", value);
+    // ------------------------------------ xulin add end --------------------------------------
+
 
     if (!url_decode(value)) {
         ngx_log_error(NGX_LOG_ERR, request->connection->log, 0,
